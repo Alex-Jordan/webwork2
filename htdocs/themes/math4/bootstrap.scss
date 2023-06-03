@@ -12,6 +12,8 @@
  * Artistic License for more details.
  */
 
+@use 'sass:color';
+
 // Include functions first (so you can manipulate colors, SVGs, calc, etc)
 @import "../../node_modules/bootstrap/scss/functions";
 
@@ -87,6 +89,7 @@ $breadcrumb-active-color: #495057;
 	--ww-logo-background-color: #{$ww-logo-background-color};
 	--ww-primary-foreground-color: #{color-contrast($primary)};
 	--ww-achievement-level-color: #{$ww-achievement-level-color};
+	--ww-navbar-brand-background-color: #{color.scale($primary, $alpha: -30%)};
 }
 
 // Overrides
