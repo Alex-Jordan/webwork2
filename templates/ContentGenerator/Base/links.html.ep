@@ -95,6 +95,8 @@
 			<li class="list-group-item nav-item"><%= $makelink->('instructor_tools') %></li>
 			% # Class list editor
 			<li class="list-group-item nav-item"><%= $makelink->('instructor_user_list') %></li>
+			% # Set assigner
+			<li class="list-group-item nav-item"><%= $makelink->('instructor_set_assigner') %></li>
 			% # Homework Set Editor
 			<li class="list-group-item nav-item"><%= $makelink->('instructor_set_list') %></li>
 			% # Editor link.  Only shown for non-versioned sets
@@ -113,8 +115,6 @@
 				</li>
 			% }
 
-			% # Set assigner
-			<li class="list-group-item nav-item"><%= $makelink->('instructor_set_assigner') %></li>
 			% # Problem Editor
 			<li class="list-group-item nav-item"><%= $makelink->('instructor_problem_editor') %></li>
 			% if (defined $problemID) {
