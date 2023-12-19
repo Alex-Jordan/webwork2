@@ -26,6 +26,7 @@ use Net::IP;    # needed for location management
 use File::Path 'remove_tree';
 use File::stat;
 use Time::localtime;
+use String::ShellQuote;
 
 use WeBWorK::CourseEnvironment;
 use WeBWorK::Debug;
@@ -293,21 +294,20 @@ sub do_add_course ($c) {
 	my $db    = $c->db;
 	my $authz = $c->authz;
 
-	my $add_courseID          = trim_spaces($c->param('add_courseID'))          || '';
-	my $add_courseTitle       = trim_spaces($c->param('add_courseTitle'))       || '';
-	my $add_courseInstitution = trim_spaces($c->param('add_courseInstitution')) || '';
+	my $add_courseID          = trim_spaces($c->param('add_courseID'))          // '';
+	my $add_courseTitle       = trim_spaces($c->param('add_courseTitle'))       // '';
+	my $add_courseInstitution = trim_spaces($c->param('add_courseInstitution')) // '';
 
-	my $add_admin_users = trim_spaces($c->param('add_admin_users')) || '';
+	my $add_admin_users = $c->param('add_admin_users') || '';
 
-	my $add_initial_userID          = trim_spaces($c->param('add_initial_userID'))          || '';
-	my $add_initial_password        = trim_spaces($c->param('add_initial_password'))        || '';
-	my $add_initial_confirmPassword = trim_spaces($c->param('add_initial_confirmPassword')) || '';
-	my $add_initial_firstName       = trim_spaces($c->param('add_initial_firstName'))       || '';
-	my $add_initial_lastName        = trim_spaces($c->param('add_initial_lastName'))        || '';
-	my $add_initial_email           = trim_spaces($c->param('add_initial_email'))           || '';
+	my $add_initial_userID          = trim_spaces($c->param('add_initial_userID'))          // '';
+	my $add_initial_password        = trim_spaces($c->param('add_initial_password'))        // '';
+	my $add_initial_confirmPassword = trim_spaces($c->param('add_initial_confirmPassword')) // '';
+	my $add_initial_firstName       = trim_spaces($c->param('add_initial_firstName'))       // '';
+	my $add_initial_lastName        = trim_spaces($c->param('add_initial_lastName'))        // '';
+	my $add_initial_email           = trim_spaces($c->param('add_initial_email'))           // '';
 
-	my $add_templates_course = trim_spaces($c->param('add_templates_course')) || '';
-	my $add_config_file      = trim_spaces($c->param('add_config_file'))      || '';
+	my $copy_from_course = trim_spaces($c->param('copy_from_course')) // '';
 
 	my $add_dbLayout = trim_spaces($c->param('add_dbLayout')) || '';
 
@@ -363,11 +363,10 @@ sub do_add_course ($c) {
 
 	# Include any optional arguments, including a template course and the course title and course institution.
 	my %optional_arguments;
-	if ($add_templates_course ne '') {
-		$optional_arguments{templatesFrom} = $add_templates_course;
-	}
-	if ($add_config_file ne '') {
-		$optional_arguments{copySimpleConfig} = $add_config_file;
+	if ($copy_from_course ne '') {
+		%optional_arguments             = map { $_ => 1 } ($c->param('copy_component'));
+		$optional_arguments{copyFrom}   = $copy_from_course;
+		$optional_arguments{copyConfig} = $c->param('copy_config_file') || '';
 	}
 	if ($add_courseTitle ne '') {
 		$optional_arguments{courseTitle} = $add_courseTitle;
@@ -1207,7 +1206,7 @@ sub unarchive_course_validate ($c) {
 	my $new_courseID       = $c->param('new_courseID')       || '';
 
 	# Use the archive name for the course unless a course id was provided.
-	my $courseID = ($c->param('create_newCourseID') ? $new_courseID : $unarchive_courseID) =~ s/\.tar\.gz$//r;
+	my $courseID = ($new_courseID =~ /\S/ ? $new_courseID : $unarchive_courseID) =~ s/\.tar\.gz$//r;
 
 	debug(" unarchive_courseID $unarchive_courseID new_courseID $new_courseID ");
 
@@ -1240,7 +1239,7 @@ sub unarchive_course_confirm ($c) {
 	my $unarchive_courseID = $c->param('unarchive_courseID') || '';
 	my $new_courseID       = $c->param('new_courseID')       || '';
 
-	my $courseID = ($c->param('create_newCourseID') ? $new_courseID : $unarchive_courseID) =~ s/\.tar\.gz//r;
+	my $courseID = ($new_courseID =~ /\S/ ? $new_courseID : $unarchive_courseID) =~ s/\.tar\.gz//r;
 
 	debug(" unarchive_courseID $unarchive_courseID new_courseID $new_courseID ");
 
@@ -1275,13 +1274,54 @@ sub do_unarchive_course ($c) {
 			class => 'alert alert-danger p-1 mb-2',
 			$c->c(
 				$c->tag(
-					'p', $c->maketext('An error occurred while archiving the course [_1]:', $unarchive_courseID)
+					'p', $c->maketext('An error occurred while unarchiving the course [_1]:', $unarchive_courseID)
 				),
 				$c->tag('div', class => 'font-monospace', $error)
 			)->join('')
 		);
 	} else {
 		writeLog($ce, 'hosted_courses', join("\t", "\tunarchived", '', '', "$unarchive_courseID to $new_courseID",));
+
+		if ($c->param('clean_up_course')) {
+			my $ce_new = WeBWorK::CourseEnvironment->new({ courseName => $new_courseID });
+			my $db_new = WeBWorK::DB->new($ce_new->{dbLayout});
+
+			for my $student_id ($db_new->listPermissionLevelsWhere({ permission => 0 })) {
+				$db_new->deleteUser($student_id->[0]);
+			}
+
+			my @log_files = (values %{ $ce_new->{courseFiles}{logs} });
+			for my $file (@log_files) {
+				if (-e $file) {
+					my $rm_cmd = "2>&1 $ce_new->{externalPrograms}{rm} " . shell_quote($file);
+					my $rm_out = readpipe $rm_cmd;
+					if ($?) {
+						return $c->tag(
+							'div',
+							class => 'alert alert-danger p-1 mb-2',
+							$c->c($c->tag('p', $c->maketext('Failed to remove file  [_1]:', $file)),
+								$c->tag('div', class => 'font-monospace', $rm_out))->join('')
+						);
+					}
+				}
+			}
+
+			if (-d "$ce_new->{courseDirs}{scoring}") {
+				my $rm_cmd =
+					"2>&1 $ce_new->{externalPrograms}{rm} -f " . shell_quote($ce_new->{courseDirs}{scoring}) . "/*";
+				my $rm_out = readpipe $rm_cmd;
+				if ($?) {
+					return $c->tag(
+						'div',
+						class => 'alert alert-danger p-1 mb-2',
+						$c->c(
+							$c->tag('p',   $c->maketext('Failed to remove scoring files:')),
+							$c->tag('div', class => 'font-monospace', $rm_out)
+						)->join('')
+					);
+				}
+			}
+		}
 
 		return $c->c(
 			$c->tag(
@@ -1291,26 +1331,42 @@ sub do_unarchive_course ($c) {
 			),
 			$c->tag(
 				'div',
-				class => 'text-center',
-				$c->link_to(
-					$c->maketext('Log into [_1]', $new_courseID) => 'set_list' => { courseID => $new_courseID }
-				),
-			),
-			$c->form_for(
-				$c->current_route,
-				method => 'POST',
+				class => 'row',
 				$c->c(
-					$c->hidden_authen_fields,
-					$c->hidden_fields('subDisplay'),
-					$c->hidden_field(unarchive_courseID => $unarchive_courseID),
-					$c->tag(
-						'div',
-						class => 'd-flex justify-content-center mt-2',
-						$c->submit_button(
-							$c->maketext('Unarchive Next Course'),
-							name  => 'decline_unarchive_course',
-							class => 'btn btn-primary'
-						)
+					$c->form_for(
+						$c->current_route,
+						method => 'POST',
+						class  => 'col-4',
+						$c->c(
+							$c->hidden_authen_fields,
+							$c->hidden_field(subDisplay        => 'upgrade_course'),
+							$c->hidden_field(upgrade_course    => 1),
+							$c->hidden_field(upgrade_courseIDs => $new_courseID),
+							$c->submit_button(
+								$c->maketext('Upgrade Course'),
+								name  => 'upgrade_course_confirm',
+								class => 'btn btn-primary'
+							)
+						)->join('')
+					),
+					$c->link_to(
+						$c->maketext('Log into Course') => 'set_list' => { courseID => $new_courseID },
+						class                           => 'btn btn-primary col-4'
+					),
+					$c->form_for(
+						$c->current_route,
+						method => 'POST',
+						class  => 'col-4 text-end',
+						$c->c(
+							$c->hidden_authen_fields,
+							$c->hidden_fields('subDisplay'),
+							$c->hidden_field(unarchive_courseID => $unarchive_courseID),
+							$c->submit_button(
+								$c->maketext('Unarchive More'),
+								name  => 'unarchive_more',
+								class => 'btn btn-primary'
+							)
+						)->join('')
 					)
 				)->join('')
 			)
