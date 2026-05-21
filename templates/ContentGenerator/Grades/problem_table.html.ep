@@ -43,19 +43,25 @@
 				</td>
 			% }
 		</tr>
-		<tr>
-			<th class="text-start" scope="row"><%= maketext('Status (%)') %></th>
+		<tr class="weights-row">
+			<th class="text-start" scope="row"><%= maketext('Weight') %></th>
 			% for my $problem (@problems) {
-				<td><%= $problem->{score} %></td>
+				<td><%= $problem->{value} %></td>
 			% }
 		</tr>
 		% unless ($item->{version_count}) {
-			<tr>
+			<tr class="attempts-row">
 				<th class="text-start" scope="row"><%= maketext('Attempts') %></th>
 				% for my $problem (@problems) {
 					<td><%= $problem->{attempts} %></td>
 				% }
 			</tr>
 		% }
+		<tr>
+			<th class="text-start" scope="row"><%= maketext('Status (%)') %></th>
+			% for my $problem (@problems) {
+				<td><%= $problem->{score} %></td>
+			% }
+		</tr>
 	</tbody>
 </table>

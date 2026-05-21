@@ -308,6 +308,7 @@ sub displayStudentGrades ($c) {
 				|| $authz->invalidIPAddress($set);
 
 			for my $i (0 .. $#$problem_scores) {
+				my $value      = $problem_records->[$i]{value};
 				my $score      = $problem_scores->[$i];
 				my $problem_id = $setIsVersioned ? $i + 1 : $problem_records->[$i]{problem_id};
 				my $attempts = $setIsTest ? 0 : $problem_incorrect_attempts->[$i] + $problem_records->[$i]->num_correct;
@@ -324,13 +325,25 @@ sub displayStudentGrades ($c) {
 					if ($#seq == 0) {
 						push(
 							@{ $item->{problems} },
-							{ id => $seq[0], score => $score, link => $problem_link, attempts => $attempts }
+							{
+								id       => $seq[0],
+								score    => $score,
+								link     => $problem_link,
+								attempts => $attempts,
+								value    => $value
+							}
 						);
 					}
 				} else {
 					push(
 						@{ $item->{problems} },
-						{ id => $problem_id, score => $score, link => $problem_link, attempts => $attempts }
+						{
+							id       => $problem_id,
+							score    => $score,
+							link     => $problem_link,
+							attempts => $attempts,
+							value    => $value
+						}
 					);
 				}
 			}
