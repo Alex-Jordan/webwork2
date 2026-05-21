@@ -11,22 +11,22 @@
 %
 <table class="problem-table table table-sm table-bordered caption-top font-sm text-center w-auto mb-0">
 	<caption class="small p-0">
+		<%= maketext('Score: [_1] out of [_2]', $item->{grade_total_right}, $item->{grade_total}) %>
 		% if ($item->{version_id}) {
 			% if ($item->{version_link}) {
 				<a class="fw-bold" href="<%= $item->{version_link} %>">
 			% }
 			% if ($item->{version_count} > 1) {
-				<%= maketext('Version [_1] of [_2] versions taken',
+				<%= maketext('for version [_1] of [_2] versions taken',
 					$item->{version_id}, $item->{version_count}) %>
 			% } else {
-				<%= maketext('Version [_1]', $item->{version_id}) %>
+				<%= maketext('for version [_1]', $item->{version_id}) %>
 			% }
 			% if ($item->{version_link}) {
 				</a>
 			% }
 			<br>
 		% }
-		<%= maketext('Score: [_1] out of [_2]', $item->{grade_total_right}, $item->{grade_total}) %>
 	</caption>
 	<tbody>
 		<tr>
