@@ -18,7 +18,12 @@
 		</div>
 	</div>
 % }
-%
+% if (@$open || @$reduced || @$closed) {
+	<input type="checkbox" id="toggle-weights">
+	<label for="toggle-weights" class="btn btn-secondary my-3"><%= maketext('Show/Hide Weights') %></label>
+	<input type="checkbox" id="toggle-attempts">
+	<label for="toggle-attempts" class="btn btn-secondary my-3"><%= maketext('Show/Hide Attempts') %></label>
+% }
 % if (@$open) {
 	<h2><%= maketext('Open Assignments') %></h2>
 	<%= include('ContentGenerator/Grades/grade_items', items => $open) %>

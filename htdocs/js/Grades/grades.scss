@@ -41,6 +41,19 @@
 	grid-column: 2 / 3;
 }
 
-.problem-table th {
-	min-width: 2rem;
+.problem-table {
+	th {
+		min-width: 2rem;
+	}
+	caption {
+		width: max-content;
+	}
+}
+
+#toggle-weights, #toggle-attempts, .weights-row, .attempts-row {
+	display: none;
+}
+
+#toggle-weights:checked ~ .list-group .weights-row, #toggle-attempts:checked ~ .list-group .attempts-row {
+    display: table-row;
 }
