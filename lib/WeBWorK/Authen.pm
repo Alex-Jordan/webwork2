@@ -42,7 +42,7 @@ use Math::Random::Secure qw(irand);
 
 use WeBWorK::CourseEnvironment;
 use WeBWorK::DB;
-use WeBWorK::Debug;
+use WeBWorK::Debug       qw(debug);
 use WeBWorK::Utils       qw(x runtime_use utf8Crypt cryptPassword);
 use WeBWorK::Utils::Logs qw(writeCourseLog);
 use WeBWorK::Utils::TOTP;
